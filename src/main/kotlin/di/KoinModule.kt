@@ -38,7 +38,6 @@ val appModule = module {
         DiscordClient.create(token)
             .gateway()
             .setEnabledIntents(IntentSet.of(Intent.GUILD_PRESENCES))
-            .setEntityRetrievalStrategy(EntityRetrievalStrategy.REST)
             .login()
             .block() ?: error("GatewayDiscordClient.login().block() returned null.")
     }
