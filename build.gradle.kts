@@ -29,10 +29,14 @@ dependencies {
 
     // Database
     implementation("org.jetbrains.exposed:exposed-core:0.31.1")
+    implementation("org.jetbrains.exposed:exposed-dao:0.31.1")
     implementation("org.jetbrains.exposed:exposed-java-time:0.31.1")
     implementation("org.jetbrains.exposed:exposed-jdbc:0.31.1")
     implementation("org.postgresql:postgresql:42.2.23")
     implementation("com.zaxxer:HikariCP:5.0.0")
+
+    // DI
+    implementation("io.insert-koin:koin-ktor:3.1.2")
 
     // Image processing
     implementation("org.imgscalr:imgscalr-lib:4.2")
