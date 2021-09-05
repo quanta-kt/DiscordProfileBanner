@@ -21,6 +21,10 @@ dependencies {
     // Server
     implementation("io.ktor:ktor-server-core:1.6.3")
     implementation("io.ktor:ktor-server-netty:1.6.3")
+    // ktor client
+    implementation("io.ktor:ktor-client-core:1.6.3")
+    implementation("io.ktor:ktor-client-cio:1.6.3")
+    // Logging for Ktor
     implementation("ch.qos.logback:logback-classic:1.2.5")
 
     // Discord API
@@ -34,6 +38,7 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-jdbc:0.31.1")
     implementation("org.postgresql:postgresql:42.2.23")
     implementation("com.zaxxer:HikariCP:5.0.0")
+    implementation("org.flywaydb:flyway-core:7.14.1")
 
     // DI
     implementation("io.insert-koin:koin-ktor:3.1.2")

@@ -10,6 +10,7 @@ object Visits : IntIdTable("visit") {
     val ip = text("ip")
     val timestamp = timestamp("timestamp")
     val userId = long("user_id")
+    val country = text("country").nullable()
 }
 
 class Visit(id: EntityID<Int>) : IntEntity(id) {
@@ -17,4 +18,5 @@ class Visit(id: EntityID<Int>) : IntEntity(id) {
     var ip by Visits.ip
     var timestamp by Visits.timestamp
     var userId by Visits.userId
+    var country by Visits.country
 }

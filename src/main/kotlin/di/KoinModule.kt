@@ -2,14 +2,14 @@ package di
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
-import data.tables.Visits
 import discord4j.core.DiscordClient
 import discord4j.core.retriever.EntityRetrievalStrategy
 import discord4j.gateway.intent.Intent
 import discord4j.gateway.intent.IntentSet
+import io.ktor.client.*
+import io.ktor.client.engine.cio.*
+import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.koin.dsl.module
 import kotlin.concurrent.thread
 
@@ -25,8 +25,10 @@ private fun createDatabaseConnection() : Database {
         ds.close()
     })
 
-    transaction {
-        SchemaUtils.create(Visits)
+    // Migrate database
+    Flyway.configure().dataSource(ds).load().apply {
+        baseline()
+        migrate()
     }
 
     return db
@@ -45,5 +47,9 @@ val appModule = module {
 
     single(createdAtStart = true) {
         createDatabaseConnection()
+    }
+
+    single {
+        HttpClient(CIO)
     }
 }
