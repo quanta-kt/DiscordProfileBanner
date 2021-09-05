@@ -3,6 +3,7 @@ package routes
 import data.tables.Visit
 import discord4j.common.util.Snowflake
 import discord4j.core.GatewayDiscordClient
+import discord4j.core.`object`.presence.Activity
 import discord4j.rest.util.Image
 import generateImage
 import guildId
@@ -14,7 +15,6 @@ import io.ktor.routing.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.reactor.awaitSingleOrNull
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
@@ -48,14 +48,16 @@ fun Route.horizontalBanner() {
             }
         }
 
-        val presence = member.presence.awaitSingle()
+        val presence = member.presence.awaitSingleOrNull()
+        val activity = presence?.activities
+            ?.firstOrNull { it.type != Activity.Type.CUSTOM }
 
         val image = generateImage(
             member.username,
             member.discriminator.toInt(),
             member.getAvatarUrl(Image.Format.PNG).getOrNull() ?: member.defaultAvatarUrl,
-            presence.status,
-            presence.activity.getOrNull()
+            presence?.status,
+            activity
         )
 
         val bytes = async(Dispatchers.IO) {

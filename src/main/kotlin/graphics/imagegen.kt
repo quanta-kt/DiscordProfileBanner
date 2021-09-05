@@ -95,7 +95,7 @@ suspend fun generateImage(
     username: String,
     tag: Int,
     avatarUrl: String,
-    status: Status,
+    status: Status?,
     activity: Activity?
 ): BufferedImage = withContext(Dispatchers.Default) {
     // Download avatar
@@ -163,13 +163,15 @@ suspend fun generateImage(
         drawString("#$tag", usernameWidth, USERNAME_TEXT_SIZE + MARGIN)
 
         // Draw status
-        color = Color.WHITE
-        font = fontRegular
-        drawString(
-            "Status: ${status.toString().replace("_", " ").toLowerCase().capitalize()}",
-            0,
-            TEXT_SIZE + USERNAME_TEXT_SIZE + (MARGIN * 4)
-        )
+        if (status != null) {
+            color = Color.WHITE
+            font = fontRegular
+            drawString(
+                "Status: ${status.toString().replace("_", " ").toLowerCase().capitalize()}",
+                0,
+                TEXT_SIZE + USERNAME_TEXT_SIZE + (MARGIN * 4)
+            )
+        }
 
         // Draw activity
         if (activity != null) {
