@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     kotlin("jvm") version "1.4.32"
     application
+    kotlin("plugin.serialization") version "1.5.20"
 }
 
 group = "me.abhijeet"
@@ -21,6 +22,8 @@ dependencies {
     // Server
     implementation("io.ktor:ktor-server-core:1.6.3")
     implementation("io.ktor:ktor-server-netty:1.6.3")
+    // Serialisation
+    implementation("io.ktor:ktor-serialization:1.6.3")
     // ktor client
     implementation("io.ktor:ktor-client-core:1.6.3")
     implementation("io.ktor:ktor-client-cio:1.6.3")
@@ -45,6 +48,11 @@ dependencies {
 
     // Image processing
     implementation("org.imgscalr:imgscalr-lib:4.2")
+
+    // Testing
+    testImplementation("io.ktor:ktor-server-test-host:1.6.3")
+    testImplementation("io.insert-koin:koin-test:3.1.2")
+    testImplementation("io.insert-koin:koin-test-junit4:3.1.2")
 }
 
 tasks.withType<KotlinCompile> {
