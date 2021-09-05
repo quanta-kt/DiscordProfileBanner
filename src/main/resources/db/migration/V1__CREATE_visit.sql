@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS visit(
+    id SERIAL PRIMARY KEY,
+    ip TEXT NOT NULL,
+    "timestamp" TIMESTAMP NOT NULL,
+    user_id BIGINT NOT NULL
+)

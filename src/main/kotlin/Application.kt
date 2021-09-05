@@ -1,5 +1,6 @@
 import di.appModule
 import io.ktor.application.*
+import io.ktor.features.*
 import io.ktor.routing.*
 import io.ktor.server.netty.*
 import org.koin.ktor.ext.Koin
@@ -11,6 +12,7 @@ fun Application.module(testing: Boolean = false) {
     install(Koin) {
         modules(appModule)
     }
+    install(XForwardedHeaderSupport)
 
     routing {
         bannerRoutes()

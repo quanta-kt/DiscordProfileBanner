@@ -8,6 +8,10 @@ import discord4j.rest.util.Image
 import generateImage
 import guildId
 import io.ktor.application.*
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.response.*
@@ -28,6 +32,7 @@ fun Route.horizontalBanner() {
 
     val bot: GatewayDiscordClient by inject()
     val database: Database by inject()
+    val httpClient: HttpClient by inject()
 
     get("{id}.png") {
         val id = call.parameters["id"]?.toLongOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
@@ -36,17 +41,6 @@ fun Route.horizontalBanner() {
         val member = guild.getMemberById(Snowflake.of(id)).awaitSingleOrNull() ?: return@get call.respond(
             HttpStatusCode.NotFound
         )
-
-        // Log this request
-        launch {
-            newSuspendedTransaction(Dispatchers.IO, database) {
-                Visit.new {
-                    ip = call.request.origin.remoteHost
-                    userId = id
-                    timestamp = Instant.now()
-                }
-            }
-        }
 
         val presence = member.presence.awaitSingleOrNull()
         val activity = presence?.activities
@@ -67,11 +61,45 @@ fun Route.horizontalBanner() {
         }
 
         call.respondBytes(bytes.await(), ContentType.Image.PNG)
+
+        // Log this request
+        launch {
+            newSuspendedTransaction(Dispatchers.IO, database) {
+                val requestIp = call.request.origin.remoteHost
+                val countryCode = getCountryCodeForIp(httpClient, requestIp)
+
+                Visit.new {
+                    ip = call.request.origin.remoteHost
+                    userId = id
+                    timestamp = Instant.now()
+                    country = countryCode
+                }
+            }
+        }
     }
 }
 
 fun Routing.bannerRoutes() {
     route("banner") {
         horizontalBanner()
+    }
+}
+
+/**
+ * Calls ipapi.co to retrieve country code corresponding to the IP address.
+ */
+private suspend fun getCountryCodeForIp(httpClient: HttpClient, ip: String): String? {
+    val response: HttpResponse = httpClient.get("https://ipapi.co/$ip/country/")
+
+    if (!response.status.isSuccess()) {
+        return null
+    }
+
+    val countryCode: String = response.receive()
+
+    return if (countryCode == "Undefined") {
+        null
+    } else {
+        countryCode
     }
 }
