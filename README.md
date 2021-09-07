@@ -3,7 +3,7 @@ This tool generates a Discord profile banner image in realtime. I wrote it for u
 
 An example in action:
 
-![generated image](https://discord-prof.herokuapp.com/721012149933310029.png?)
+![generated image](https://discord-prof.herokuapp.com/banner/721012149933310029.png?b=1)
 
 ## How does it work?
 - A Discord bot connects to the Discord gatewaty.
