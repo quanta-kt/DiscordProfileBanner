@@ -1,3 +1,5 @@
+package graphics
+
 import discord4j.core.`object`.presence.Activity
 import discord4j.core.`object`.presence.Status
 import exceptions.HttpException
@@ -5,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import org.imgscalr.Scalr
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import utils.ResourceHelper
 import java.awt.*
@@ -14,43 +17,58 @@ import java.net.URL
 import javax.imageio.ImageIO
 
 
-const val IMAGE_WIDTH = 700
-const val IMAGE_HEIGHT = 160
-const val MARGIN = 10
-const val AVATAR_SIZE = IMAGE_HEIGHT - (MARGIN * 2)
-const val USERNAME_TEXT_SIZE = IMAGE_HEIGHT / 4
-const val TEXT_SIZE = IMAGE_HEIGHT / 10
+const val IMAGE_WIDTH = 525
+const val IMAGE_HEIGHT = 150
+const val MARGIN = 15
+const val TEXT_MARGIN = 5
+const val AVATAR_SIZE = 120
+const val USERNAME_TEXT_SIZE = 30
+const val TEXT_SIZE = 15
 
-const val DOT_BORDER_SIZE = 8
-const val DOT_SIZE = (AVATAR_SIZE.toFloat() / 3).toInt()
-const val INNER_DOT_SIZE = DOT_SIZE - (DOT_BORDER_SIZE * 2)
+const val STATUS_ICON_SIZE = 24
+const val STATUS_ICON_POSITION = 88
 
-private val logger = LoggerFactory.getLogger("ImageGen")
+private val logger: Logger = LoggerFactory.getLogger("ImageGen")
 
 /**
  * Color for online dot
  */
-val colorOnline = Color(59, 165, 93)
+val colorOnline: Color = Color(59, 165, 93)
 
 /**
- * Color for offline ring
+ * Color for offline graphics.getRing
  */
-val colorOffline = Color(116, 127, 141)
+val colorOffline: Color = Color(116, 127, 141)
 
 /**
  * Color for idle moon
  */
-val colorIdle = Color(250, 168, 26)
+val colorIdle: Color = Color(250, 168, 26)
 
 /**
  * Color for DnD
  */
-val colorDnd = Color(237, 66, 69)
+val colorDnd: Color = Color(237, 66, 69)
 
 /**
  * Background color
  */
-val colorBackground = Color(54, 57, 63)
+val colorBackground: Color = Color(54, 57, 63)
+
+/**
+ * Text color
+ */
+val textColor: Color = Color.WHITE
+
+/**
+ * Lighter text color
+ */
+val textColorLight: Color = Color(0xB9BBBE)
+
+/**
+ * Default color for the avatar frame
+ */
+val defaultFrameColor: Color = Color(211, 144, 171)
 
 /**
  * Discord logo
@@ -62,7 +80,7 @@ val discordLogo: BufferedImage = ImageIO.read(ResourceHelper.getResource("discor
 }
 
 /**
- * Font for drawing text
+ * Regular sized, regular text
  */
 val fontRegular: Font =
     Font.createFont(
@@ -72,35 +90,83 @@ val fontRegular: Font =
     ).deriveFont(TEXT_SIZE.toFloat())
 
 /**
- * Large and bold font for drawing username
+ * Regular sized, bold text
  */
-val fontUsername: Font =
-    Font.createFont(
-        Font.TRUETYPE_FONT,
-        ResourceHelper.getResource("Poppins-Bold.ttf")?.openStream()
-            ?: error("Unable to load Poppins Bold font.")
-    ).deriveFont(USERNAME_TEXT_SIZE.toFloat())
+val fontRegularBold: Font = Font.createFont(
+    Font.TRUETYPE_FONT,
+    ResourceHelper.getResource("Poppins-Bold.ttf")?.openStream()
+        ?: error("Unable to load Poppins Bold font.")
+).deriveFont(TEXT_SIZE.toFloat())
 
 /**
- * large regular font for drawing tag
+ * large sized, regular text
  */
-val fontTag: Font =
-    Font.createFont(
-        Font.TRUETYPE_FONT,
-        ResourceHelper.getResource("Poppins-Regular.ttf")?.openStream()
-            ?: error("Unable to load Poppins Regular font.")
-    ).deriveFont(USERNAME_TEXT_SIZE.toFloat())
+val fontLarge: Font = fontRegular.deriveFont(USERNAME_TEXT_SIZE.toFloat())
 
-suspend fun generateImage(
-    username: String,
-    tag: Int,
-    avatarUrl: String,
-    status: Status?,
-    activity: Activity?
-): BufferedImage = withContext(Dispatchers.Default) {
+/**
+ * Large sized, bold text
+ */
+val fontLargeBold: Font = fontRegularBold.deriveFont(USERNAME_TEXT_SIZE.toFloat())
+
+/**
+ *  Mask to apply on avatar
+ */
+val avatarMask: AvatarMask = AvatarMask(AVATAR_SIZE)
+
+/**
+ * The frame to draw on the left of avatar
+ */
+val avatarFrame: AvatarFrame = AvatarFrame(
+    IMAGE_HEIGHT,
+    (AVATAR_SIZE / 2) + MARGIN,
+    MARGIN / 2,
+    MARGIN
+)
+
+val offlineStatusIcon: OfflineStatusIcon = OfflineStatusIcon(STATUS_ICON_SIZE, colorOffline)
+
+/**
+ * Statuses mapped to status indicator shapes to be used.
+ */
+val statusIcons: Map<Status, Drawable> = mapOf(
+    Status.OFFLINE to offlineStatusIcon,
+    Status.INVISIBLE to offlineStatusIcon,
+    Status.UNKNOWN to offlineStatusIcon,
+    Status.ONLINE to OnlineStatusIcon(STATUS_ICON_SIZE, colorOnline),
+    Status.IDLE to IdleStatusIcon(STATUS_ICON_SIZE, colorIdle),
+    Status.DO_NOT_DISTURB to DndStatusIcon(STATUS_ICON_SIZE, colorDnd)
+)
+
+/**
+ * Statuses mapped to their colors
+ */
+val statusColors = mapOf(
+    Status.OFFLINE to colorOffline,
+    Status.ONLINE to colorOnline,
+    Status.IDLE to colorIdle,
+    Status.DO_NOT_DISTURB to colorDnd,
+    Status.UNKNOWN to colorOffline,
+    Status.INVISIBLE to colorOffline,
+)
+
+class ImageGenerationRequest(
+    val username: String,
+    val tag: String,
+    val avatarUrl: String,
+) {
+
+    var status: Status? = null
+    var activity: Activity? = null
+    var customStatus: String? = null
+
+    var frameColor: Color = defaultFrameColor
+    var showFrame: Boolean = true
+}
+
+suspend fun generateImage(request: ImageGenerationRequest): BufferedImage = withContext(Dispatchers.Default) {
     // Download avatar
     val avatar = async(Dispatchers.IO) {
-        val connection = URL(avatarUrl).openConnection() as HttpURLConnection
+        val connection = URL(request.avatarUrl).openConnection() as HttpURLConnection
         connection.requestMethod = "GET"
         connection.connect()
 
@@ -119,13 +185,23 @@ suspend fun generateImage(
     with(image.createGraphics()) {
         applyQualityRenderingHints()
 
+        drawBackground(this.create() as Graphics2D)
+
+        color = request.frameColor
+
+        if (request.showFrame) {
+            draw(avatarFrame)
+        }
+
+        translate(MARGIN, MARGIN)
+
         // Draw avatar
         val avatarScaled = Scalr.resize(avatar.await(), AVATAR_SIZE)
         avatar.await().flush()
         drawMaskedAvatar(
             create(
-                MARGIN,
-                MARGIN,
+                0,
+                0,
                 AVATAR_SIZE,
                 AVATAR_SIZE
             ) as Graphics2D,
@@ -134,63 +210,83 @@ suspend fun generateImage(
 
         // Draw status dot
         val dotGraphics = create(
-            MARGIN + AVATAR_SIZE - DOT_SIZE,
-            MARGIN + AVATAR_SIZE - DOT_SIZE,
-            DOT_SIZE,
-            DOT_SIZE
+            STATUS_ICON_POSITION,
+            STATUS_ICON_POSITION,
+            STATUS_ICON_SIZE,
+            STATUS_ICON_SIZE
         ) as Graphics2D
 
-        when (status) {
-            Status.ONLINE -> drawOnlineDot(dotGraphics)
-            Status.OFFLINE -> drawOfflineRing(dotGraphics)
-            Status.IDLE -> drawIdleMoon(dotGraphics)
-            Status.DO_NOT_DISTURB -> drawDoNotDisturbDot(dotGraphics)
-            Status.UNKNOWN -> drawOfflineRing(dotGraphics)
-            Status.INVISIBLE -> drawOfflineRing(dotGraphics)
-        }
+        val statusIndicatorDrawable = statusIcons[request.status] ?: offlineStatusIcon
+        dotGraphics.draw(statusIndicatorDrawable)
 
         // Translate to make sure we don't interfere with the avatar
-        translate(MARGIN * 4 + AVATAR_SIZE, 0)
+        translate(AVATAR_SIZE + MARGIN, -MARGIN + TEXT_MARGIN)
 
-        // Draw username and tag
-        font = fontUsername
-        color = Color.WHITE
-        val usernameWidth = fontMetrics.stringWidth(username)
-        drawString(username, 0, USERNAME_TEXT_SIZE + MARGIN)
+        // The y co-ordinate to draw text at
+        var textY = USERNAME_TEXT_SIZE
 
-        font = fontTag
-        color = Color(0xB9BBBE)
-        drawString("#$tag", usernameWidth, USERNAME_TEXT_SIZE + MARGIN)
+        // Draw username
+        font = fontLargeBold
+        color = textColor
+        val usernameWidth = fontMetrics.stringWidth(request.username)
+        drawString(request.username, 0, textY)
+
+        // and tag
+        font = fontLarge
+        color = textColorLight
+        drawString("#${request.tag}", usernameWidth, textY)
+
+        textY += TEXT_MARGIN * 2
+
+        color = textColor
+        font = fontRegularBold
+
+        // Move to next line
+        textY += TEXT_SIZE + TEXT_MARGIN
+        font = fontRegularBold
 
         // Draw status
-        if (status != null) {
-            color = Color.WHITE
-            font = fontRegular
-            drawString(
-                "Status: ${status.toString().replace("_", " ").toLowerCase().capitalize()}",
-                0,
-                TEXT_SIZE + USERNAME_TEXT_SIZE + (MARGIN * 4)
-            )
+        val statusText = (request.status ?: Status.OFFLINE)
+            .toString()
+            .replace("_", " ")
+            .toLowerCase()
+            .capitalize()
+        val statusLabel = "Status: "
+        val statusLabelWidth = fontMetrics.stringWidth(statusLabel)
+        drawString("Status: ", 0, textY)
+        color = statusColors[request.status]
+        drawString(statusText, statusLabelWidth, textY)
+
+        font = fontRegular
+        color = textColor
+
+        // Draw custom status
+        request.customStatus?.let {
+            // Move to next line
+            textY += TEXT_SIZE + TEXT_MARGIN
+            drawString(it, 0, textY)
         }
 
+        // Move to next line
+        textY += TEXT_SIZE + TEXT_MARGIN * 2
+
+        font = fontRegular
+
         // Draw activity
-        if (activity != null) {
-            drawString(activity.format(), 0, (TEXT_SIZE * 2) + USERNAME_TEXT_SIZE + (MARGIN * 5))
+        request.activity?.let { activity ->
+            drawString(activity.format(), 0, textY)
 
             // Draw activity state
-            activity.state.ifPresent {
-                drawString(it, 0, (TEXT_SIZE * 3) + USERNAME_TEXT_SIZE + (MARGIN * 6))
+            activity.state.ifPresent { state ->
+                // Move to next line
+                textY += TEXT_SIZE + TEXT_MARGIN
+                drawString(state, 0, textY)
             }
         }
 
         // Draw discord logo
-        translate(-(MARGIN * 4 + AVATAR_SIZE), 0)
-        drawImage(discordLogo, IMAGE_WIDTH - discordLogo.width - MARGIN, MARGIN, null)
-
-        // Fill background
-        composite = AlphaComposite.getInstance(AlphaComposite.DST_OVER, 1f)
-        color = colorBackground
-        fillRoundRect(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT, MARGIN, MARGIN)
+        translate(-(MARGIN * 3 + AVATAR_SIZE), 0)
+        drawImage(discordLogo, IMAGE_WIDTH - discordLogo.width, 0, null)
 
         dispose()
     }
@@ -218,14 +314,20 @@ fun drawMaskedAvatar(graphics: Graphics2D, avatar: BufferedImage) {
     val mask = BufferedImage(AVATAR_SIZE, AVATAR_SIZE, BufferedImage.TYPE_INT_ARGB)
     val maskGraphics = mask.createGraphics()
     maskGraphics.applyQualityRenderingHints()
-    maskGraphics.fillOval(0, 0, AVATAR_SIZE, AVATAR_SIZE)
+    maskGraphics.draw(avatarMask)
     maskGraphics.dispose()
 
-    // Apply masked
-    graphics.applyQualityRenderingHints()
-    graphics.drawImage(avatar, 0, 0, null)
-    graphics.composite = AlphaComposite.getInstance(AlphaComposite.DST_IN)
-    graphics.drawImage(mask, 0, 0, null)
+    // Create masked image
+    val masked = BufferedImage(AVATAR_SIZE, AVATAR_SIZE, BufferedImage.TYPE_INT_ARGB)
+    val maskedGraphics = masked.createGraphics()
+    maskedGraphics.applyQualityRenderingHints()
+    maskedGraphics.drawImage(avatar, 0, 0, null)
+    maskedGraphics.composite = AlphaComposite.getInstance(AlphaComposite.DST_IN)
+    maskedGraphics.drawImage(mask, 0, 0, null)
+    maskGraphics.dispose()
+
+    // Draw masked image
+    graphics.drawImage(masked, 0, 0, null)
 }
 
 fun Graphics2D.applyQualityRenderingHints() {
@@ -237,104 +339,11 @@ fun Graphics2D.applyQualityRenderingHints() {
     setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
     setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
     setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE)
+    setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
 }
 
-
-fun drawOnlineDot(graphics: Graphics2D) {
-    // Draw outer dot for border
-    drawOuterDot(graphics)
-
-    graphics.color = colorOnline
-    graphics.fillOval(
-        DOT_BORDER_SIZE,
-        DOT_BORDER_SIZE,
-        INNER_DOT_SIZE,
-        INNER_DOT_SIZE
-    )
-}
-
-fun drawOfflineRing(graphics: Graphics2D) {
-    drawOuterDot(graphics)
-
-    graphics.color = colorOffline
-    graphics.fillOval(
-        DOT_BORDER_SIZE,
-        DOT_BORDER_SIZE,
-        INNER_DOT_SIZE,
-        INNER_DOT_SIZE
-    )
-
-    val rule = AlphaComposite.CLEAR
-    val comp: Composite = AlphaComposite.getInstance(rule, 0f)
-    graphics.composite = comp
-    graphics.stroke = BasicStroke(5f)
-    graphics.fillOval(
-        DOT_BORDER_SIZE * 2,
-        DOT_BORDER_SIZE * 2,
-        INNER_DOT_SIZE - DOT_BORDER_SIZE * 2,
-        INNER_DOT_SIZE - DOT_BORDER_SIZE * 2,
-    )
-}
-
-fun drawIdleMoon(graphics: Graphics2D) {
-    drawOuterDot(graphics)
-
-    graphics.color = colorIdle
-    graphics.fillOval(
-        DOT_BORDER_SIZE,
-        DOT_BORDER_SIZE,
-        INNER_DOT_SIZE,
-        INNER_DOT_SIZE
-    )
-
-    // Erase out a small circle to make it look like a partial moon
-    graphics.composite = AlphaComposite.getInstance(AlphaComposite.CLEAR, 0f)
-    graphics.fillOval(
-        DOT_BORDER_SIZE / 2,
-        DOT_BORDER_SIZE / 2,
-        DOT_SIZE / 2,
-        DOT_SIZE / 2,
-    )
-}
-
-fun drawDoNotDisturbDot(graphics: Graphics2D) {
-    // Draw outer dot for border
-    drawOuterDot(graphics)
-
-    graphics.color = colorDnd
-    graphics.fillOval(
-        DOT_BORDER_SIZE,
-        DOT_BORDER_SIZE,
-        INNER_DOT_SIZE,
-        INNER_DOT_SIZE
-    )
-
-    // cut out a round rect
-    val rule = AlphaComposite.CLEAR
-    val comp: Composite = AlphaComposite.getInstance(rule, 0f)
-    graphics.composite = comp
-    graphics.fillRoundRect(
-        (DOT_BORDER_SIZE * 1.5).toInt(),
-        (DOT_BORDER_SIZE * 2.4).toInt(),
-        INNER_DOT_SIZE - DOT_BORDER_SIZE,
-        DOT_BORDER_SIZE,
-        DOT_BORDER_SIZE,
-        DOT_BORDER_SIZE
-    )
-}
-
-fun drawOuterDot(graphics: Graphics2D) {
-    val rule = AlphaComposite.CLEAR
-    val comp: Composite = AlphaComposite.getInstance(rule, 0f)
-    graphics.composite = comp
-    graphics.stroke = BasicStroke(5f)
-    graphics.fillOval(
-        0,
-        0,
-        DOT_SIZE,
-        DOT_SIZE
-    )
-
-    // Restore composite
-    graphics.composite = AlphaComposite.getInstance(AlphaComposite.SRC_OVER)
+fun drawBackground(graphics: Graphics2D) = with(graphics) {
+    composite = AlphaComposite.getInstance(AlphaComposite.DST_OVER, 1f)
+    color = colorBackground
+    fillRoundRect(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT, MARGIN, MARGIN)
 }

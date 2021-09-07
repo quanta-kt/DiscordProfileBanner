@@ -1,12 +1,14 @@
 package routes
 
+import Constants
+import data.tables.FramePreference
 import data.tables.Visit
 import discord4j.common.util.Snowflake
 import discord4j.core.GatewayDiscordClient
 import discord4j.core.`object`.presence.Activity
 import discord4j.rest.util.Image
-import generateImage
-import guildId
+import graphics.ImageGenerationRequest
+import graphics.generateImage
 import io.ktor.application.*
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -24,6 +26,7 @@ import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.koin.ktor.ext.inject
 import utils.getOrNull
+import java.awt.Color
 import java.io.ByteArrayOutputStream
 import java.time.Instant
 import javax.imageio.ImageIO
@@ -37,7 +40,7 @@ fun Route.horizontalBanner() {
     get("{id}.png") {
         val id = call.parameters["id"]?.toLongOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
         val guild =
-            bot.getGuildById(guildId).awaitSingleOrNull() ?: return@get call.respond(HttpStatusCode.NotFound)
+            bot.getGuildById(Constants.guildId).awaitSingleOrNull() ?: return@get call.respond(HttpStatusCode.NotFound)
         val member = guild.getMemberById(Snowflake.of(id)).awaitSingleOrNull() ?: return@get call.respond(
             HttpStatusCode.NotFound
         )
@@ -46,13 +49,30 @@ fun Route.horizontalBanner() {
         val activity = presence?.activities
             ?.firstOrNull { it.type != Activity.Type.CUSTOM }
 
-        val image = generateImage(
+        val userFramePreference = newSuspendedTransaction(Dispatchers.IO) {
+            FramePreference.findById(id)
+        }
+
+        val imageGenerationRequest = ImageGenerationRequest(
             member.username,
-            member.discriminator.toInt(),
-            member.getAvatarUrl(Image.Format.PNG).getOrNull() ?: member.defaultAvatarUrl,
-            presence?.status,
-            activity
+            member.discriminator,
+            member.getAvatarUrl(Image.Format.PNG).getOrNull() ?: member.defaultAvatarUrl
         )
+
+        imageGenerationRequest.apply {
+            status = presence?.status
+            this.activity = activity
+            customStatus = presence?.activities?.firstOrNull { it.type == Activity.Type.CUSTOM }?.state?.getOrNull()
+
+            if (userFramePreference != null) {
+                userFramePreference.color?.let {
+                    frameColor = Color(it)
+                }
+                showFrame = userFramePreference.enabled
+            }
+        }
+
+        val image = generateImage(imageGenerationRequest)
 
         val bytes = async(Dispatchers.IO) {
             val os = ByteArrayOutputStream()
