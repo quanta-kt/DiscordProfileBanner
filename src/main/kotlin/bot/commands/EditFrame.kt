@@ -59,7 +59,7 @@ object EditFrame : Command {
                 if (enabled != null)
                     it[this.enabled] = enabled
 
-                // Reset to defaults if both aguments are null
+                // Reset to defaults if both arguments are null
                 if (colorCode == null && enabled == null) {
                     it[this.color] = null
                     it[this.enabled] = true
@@ -68,7 +68,7 @@ object EditFrame : Command {
         }
 
         if (colorCode == null && enabled == null) {
-            event.replyEphemeral("Avatar frame color rest.").awaitSingle()
+            event.replyEphemeral("Avatar frame was reset.").awaitSingle()
         } else {
             event.replyEphemeral("Avatar frame updated.").awaitSingle()
         }
