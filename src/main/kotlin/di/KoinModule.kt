@@ -1,7 +1,9 @@
 package di
 
 import bot.createBot
-import data.createDatabaseConnection
+import data.createHikariDataSource
+import data.repository.BannerPreferenceRepository
+import data.repository.VisitLogRepository
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import org.koin.dsl.module
@@ -11,9 +13,9 @@ val appModule = module {
         createBot()
     }
 
-    single(createdAtStart = true) {
-        createDatabaseConnection()
-    }
+    single { createHikariDataSource() }
+    single { BannerPreferenceRepository(get()) }
+    single { VisitLogRepository(get()) }
 
     single {
         HttpClient(CIO)

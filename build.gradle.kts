@@ -11,10 +11,6 @@ version = "1.0"
 
 repositories {
     mavenCentral()
-    maven {
-        name = "m2-dv8tion"
-        url = uri("https://m2.dv8tion.net/releases")
-    }
     maven("https://jitpack.io/")
 }
 
@@ -35,10 +31,6 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor:1.5.1")
 
     // Database
-    implementation("org.jetbrains.exposed:exposed-core:0.31.1")
-    implementation("org.jetbrains.exposed:exposed-dao:0.31.1")
-    implementation("org.jetbrains.exposed:exposed-java-time:0.31.1")
-    implementation("org.jetbrains.exposed:exposed-jdbc:0.31.1")
     implementation("org.postgresql:postgresql:42.2.23")
     implementation("com.zaxxer:HikariCP:5.0.0")
     implementation("org.flywaydb:flyway-core:7.14.1")

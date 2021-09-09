@@ -1,16 +1,13 @@
 package api
 
 import data.models.Stat
-import data.tables.Visit
-import data.tables.Visits
+import data.repository.VisitLogRepository
 import io.ktor.http.*
 import io.ktor.server.testing.*
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import module
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.deleteAll
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.Test
 import org.koin.test.KoinTest
 import org.koin.test.inject
@@ -20,13 +17,7 @@ import kotlin.test.assertNotNull
 
 internal class UserStatsTest : KoinTest {
 
-    private val database: Database by inject()
-
-    private fun deleteVisits() {
-        transaction(database) {
-            Visits.deleteAll()
-        }
-    }
+    private val visitLogRepository: VisitLogRepository by inject()
 
     @Test
     fun testGetUserStats() {
@@ -34,15 +25,16 @@ internal class UserStatsTest : KoinTest {
 
         withTestApplication({ module(testing = true) }) {
 
-            deleteVisits()
+            runBlocking {
+                visitLogRepository.deleteAll()
+            }
 
             // Create mock visit records
-            transaction(database) {
+            runBlocking {
                 for (i in 1..100) {
-                    println(i)
-                    Visit.new {
-                        ip = "${i % 15}.${i % 10}.${i % 5}.${i % 2}"
-                        country = when (i) {
+                    visitLogRepository.logVisit(
+                        ip = "${i % 15}.${i % 10}.${i % 5}.${i % 2}",
+                        countryCode = when (i) {
                             1 -> "GB"
                             2 -> "BR"
                             3 -> "MX"
@@ -55,10 +47,10 @@ internal class UserStatsTest : KoinTest {
                             in 60..79 -> "VN" // 20
                             in 80..100 -> "CN" // 21
                             else -> null
-                        }
-                        timestamp = Instant.now()
-                        this.userId = userId
-                    }
+                        },
+                        instant = Instant.now(),
+                        userId = userId
+                    )
                 }
             }
 
@@ -68,15 +60,15 @@ internal class UserStatsTest : KoinTest {
 
             assertEquals(100, stat.totalVisits)
             assertEquals(30, stat.uniqueVisits)
-            val topCountries = stat.topCounties.entries
+            val topCountries = stat.topCountries.entries
                 .sortedByDescending { it.value }
                 .map { it.key }
             assertEquals(listOf("CN", "VN", "NP", "FR", "RU"), topCountries)
-            assertEquals(21, stat.topCounties["CN"])
-            assertEquals(20, stat.topCounties["VN"])
-            assertEquals(19, stat.topCounties["NP"])
-            assertEquals(11, stat.topCounties["FR"])
-            assertEquals(9, stat.topCounties["RU"])
+            assertEquals(21, stat.topCountries["CN"])
+            assertEquals(20, stat.topCountries["VN"])
+            assertEquals(19, stat.topCountries["NP"])
+            assertEquals(11, stat.topCountries["FR"])
+            assertEquals(9, stat.topCountries["RU"])
         }
     }
 }

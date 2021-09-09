@@ -9,6 +9,13 @@ interface Command {
     suspend fun execute(event: SlashCommandEvent)
 }
 
+/**
+ * A list of all available commands
+ */
 val commands : Map<String, Command> = mapOf(
-    EditFrame.name to EditFrame
+    FrameColor.name to FrameColor,
+    ToggleFrame.name to ToggleFrame,
+    ToggleTag.name to ToggleTag,
+    ToggleCustomStatus.name to ToggleCustomStatus,
+    BannerBackground.name to BannerBackground,
 )

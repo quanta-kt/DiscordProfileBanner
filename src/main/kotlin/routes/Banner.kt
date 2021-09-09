@@ -1,8 +1,8 @@
 package routes
 
 import Constants
-import data.tables.FramePreference
-import data.tables.Visit
+import data.repository.BannerPreferenceRepository
+import data.repository.VisitLogRepository
 import discord4j.common.util.Snowflake
 import discord4j.core.GatewayDiscordClient
 import discord4j.core.`object`.presence.Activity
@@ -22,8 +22,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.reactor.awaitSingleOrNull
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.koin.ktor.ext.inject
 import utils.getOrNull
 import java.awt.Color
@@ -34,7 +32,8 @@ import javax.imageio.ImageIO
 fun Route.horizontalBanner() {
 
     val bot: GatewayDiscordClient by inject()
-    val database: Database by inject()
+    val bannerPreferenceRepository: BannerPreferenceRepository by inject()
+    val visitLogRepository: VisitLogRepository by inject()
     val httpClient: HttpClient by inject()
 
     get("{id}.png") {
@@ -49,9 +48,7 @@ fun Route.horizontalBanner() {
         val activity = presence?.activities
             ?.firstOrNull { it.type != Activity.Type.CUSTOM }
 
-        val userFramePreference = newSuspendedTransaction(Dispatchers.IO) {
-            FramePreference.findById(id)
-        }
+        val bannerPreference = bannerPreferenceRepository.getBannerPreferences(id)
 
         val imageGenerationRequest = ImageGenerationRequest(
             member.username,
@@ -64,15 +61,19 @@ fun Route.horizontalBanner() {
             this.activity = activity
             customStatus = presence?.activities?.firstOrNull { it.type == Activity.Type.CUSTOM }?.state?.getOrNull()
 
-            if (userFramePreference != null) {
-                userFramePreference.color?.let {
+            if (bannerPreference != null) {
+                bannerPreference.frameColor?.let {
                     frameColor = Color(it)
                 }
-                showFrame = userFramePreference.enabled
+
+                showFrame = bannerPreference.frameVisible
+                showCustomStatus = bannerPreference.customStatusVisible
+                showTag = bannerPreference.tagVisible
+                backgroundImageUrl = bannerPreference.backgroundImageUrl
             }
         }
 
-        val image = generateImage(imageGenerationRequest)
+        val image = generateImage(imageGenerationRequest, httpClient)
 
         val bytes = async(Dispatchers.IO) {
             val os = ByteArrayOutputStream()
@@ -84,17 +85,9 @@ fun Route.horizontalBanner() {
 
         // Log this request
         launch {
-            newSuspendedTransaction(Dispatchers.IO, database) {
-                val requestIp = call.request.origin.remoteHost
-                val countryCode = getCountryCodeForIp(httpClient, requestIp)
-
-                Visit.new {
-                    ip = call.request.origin.remoteHost
-                    userId = id
-                    timestamp = Instant.now()
-                    country = countryCode
-                }
-            }
+            val requestIp = call.request.origin.remoteHost
+            val countryCode = getCountryCodeForIp(httpClient, requestIp)
+            visitLogRepository.logVisit(requestIp, countryCode, Instant.now(), id)
         }
     }
 }

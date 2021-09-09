@@ -3,8 +3,13 @@ package graphics
 import discord4j.core.`object`.presence.Activity
 import discord4j.core.`object`.presence.Status
 import exceptions.HttpException
+import io.ktor.client.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.imgscalr.Scalr
 import org.slf4j.Logger
@@ -12,6 +17,8 @@ import org.slf4j.LoggerFactory
 import utils.ResourceHelper
 import java.awt.*
 import java.awt.image.BufferedImage
+import java.io.File
+import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import javax.imageio.ImageIO
@@ -161,22 +168,32 @@ class ImageGenerationRequest(
 
     var frameColor: Color = defaultFrameColor
     var showFrame: Boolean = true
+    var showTag: Boolean = true
+    var showCustomStatus: Boolean = true
+    var backgroundImageUrl: String? = null
 }
 
-suspend fun generateImage(request: ImageGenerationRequest): BufferedImage = withContext(Dispatchers.Default) {
+suspend fun generateImage(
+    request: ImageGenerationRequest,
+    httpClient: HttpClient
+): BufferedImage = withContext(Dispatchers.Default) {
     // Download avatar
-    val avatar = async(Dispatchers.IO) {
-        val connection = URL(request.avatarUrl).openConnection() as HttpURLConnection
-        connection.requestMethod = "GET"
-        connection.connect()
+    val avatar = async {
+        val response: HttpResponse = httpClient.get(request.avatarUrl)
+        withContext(Dispatchers.IO) {
+            ImageIO.read(response.content.toInputStream())
+        }
+    }
 
-        val responseStatus = connection.responseCode
-        if (responseStatus in 200..300) {
-            return@async ImageIO.read(connection.inputStream)
-        } else {
-            logger.error("Error while reading avatar.\n" +
-                    "Response: ${connection.inputStream.readNBytes(2147483647)}")
-            throw HttpException(connection.responseMessage)
+    // Download background image if exists
+    val backgroundImage = async {
+        request.backgroundImageUrl?.let {
+            val response: HttpResponse = httpClient.get(it)
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    ImageIO.read(response.content.toInputStream())
+                }.getOrNull()
+            }
         }
     }
 
@@ -185,7 +202,7 @@ suspend fun generateImage(request: ImageGenerationRequest): BufferedImage = with
     with(image.createGraphics()) {
         applyQualityRenderingHints()
 
-        drawBackground(this.create() as Graphics2D)
+        drawBackground(this.create() as Graphics2D, backgroundImage.await())
 
         color = request.frameColor
 
@@ -220,7 +237,7 @@ suspend fun generateImage(request: ImageGenerationRequest): BufferedImage = with
         dotGraphics.draw(statusIndicatorDrawable)
 
         // Translate to make sure we don't interfere with the avatar
-        translate(AVATAR_SIZE + MARGIN, -MARGIN + TEXT_MARGIN)
+        translate(AVATAR_SIZE + MARGIN, 0)
 
         // The y co-ordinate to draw text at
         var textY = USERNAME_TEXT_SIZE
@@ -232,11 +249,11 @@ suspend fun generateImage(request: ImageGenerationRequest): BufferedImage = with
         drawString(request.username, 0, textY)
 
         // and tag
-        font = fontLarge
-        color = textColorLight
-        drawString("#${request.tag}", usernameWidth, textY)
-
-        textY += TEXT_MARGIN * 2
+        if (request.showTag) {
+            font = fontLarge
+            color = textColorLight
+            drawString("#${request.tag}", usernameWidth, textY)
+        }
 
         color = textColor
         font = fontRegularBold
@@ -261,19 +278,19 @@ suspend fun generateImage(request: ImageGenerationRequest): BufferedImage = with
         color = textColor
 
         // Draw custom status
-        request.customStatus?.let {
-            // Move to next line
-            textY += TEXT_SIZE + TEXT_MARGIN
-            drawString(it, 0, textY)
+        if (request.showCustomStatus) {
+            request.customStatus?.let {
+                // Move to next line
+                textY += TEXT_SIZE + TEXT_MARGIN
+                drawString(it, 0, textY)
+            }
         }
-
-        // Move to next line
-        textY += TEXT_SIZE + TEXT_MARGIN * 2
-
-        font = fontRegular
 
         // Draw activity
         request.activity?.let { activity ->
+            // Move to next line
+            textY += TEXT_SIZE + TEXT_MARGIN * 2
+            font = fontRegular
             drawString(activity.format(), 0, textY)
 
             // Draw activity state
@@ -342,8 +359,29 @@ fun Graphics2D.applyQualityRenderingHints() {
     setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
 }
 
-fun drawBackground(graphics: Graphics2D) = with(graphics) {
-    composite = AlphaComposite.getInstance(AlphaComposite.DST_OVER, 1f)
-    color = colorBackground
-    fillRoundRect(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT, MARGIN, MARGIN)
+fun drawBackground(graphics: Graphics2D, im: BufferedImage?) = with(graphics) {
+    if (im == null) {
+        composite = AlphaComposite.getInstance(AlphaComposite.DST_OVER, 1f)
+        color = colorBackground
+        fillRoundRect(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT, MARGIN, MARGIN)
+    } else {
+        // Create a mask
+        val mask = BufferedImage(IMAGE_WIDTH, IMAGE_HEIGHT, BufferedImage.TYPE_INT_ARGB)
+        val maskGraphics = mask.createGraphics()
+        maskGraphics.applyQualityRenderingHints()
+        maskGraphics.fillRoundRect(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT, MARGIN, MARGIN)
+        maskGraphics.dispose()
+
+        // Create masked image
+        val masked = BufferedImage(IMAGE_WIDTH, IMAGE_HEIGHT, BufferedImage.TYPE_INT_ARGB)
+        val maskedGraphics = masked.createGraphics()
+        maskedGraphics.applyQualityRenderingHints()
+        maskedGraphics.drawImage(im, 0, 0, IMAGE_WIDTH, IMAGE_HEIGHT, null)
+        maskedGraphics.composite = AlphaComposite.getInstance(AlphaComposite.DST_IN)
+        maskedGraphics.drawImage(mask, 0, 0, IMAGE_WIDTH, IMAGE_HEIGHT, null)
+        maskGraphics.dispose()
+
+        // Draw masked background
+        drawImage(masked, 0, 0, null)
+    }
 }

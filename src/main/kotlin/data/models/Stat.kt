@@ -12,5 +12,5 @@ data class Stat(
     @SerialName("unique_visits")
     val uniqueVisits: Long,
     @SerialName("top_countries")
-    val topCounties: Map<String, Long>
+    val topCountries: Map<String, Long>
 )
