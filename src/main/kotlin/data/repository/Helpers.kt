@@ -60,3 +60,15 @@ fun <T> ResultSet.iterator(block: (ResultSet) -> T): Iterator<T> {
         }
     }
 }
+
+/**
+ * Builds a list from the ResultSet
+ */
+inline fun <T> ResultSet.toList(block: (ResultSet) -> T): List<T> {
+    val list = ArrayList<T>()
+    while (next()) {
+        list.add(block(this))
+    }
+
+    return list
+}

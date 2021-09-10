@@ -23,6 +23,8 @@ dependencies {
     // ktor client
     implementation("io.ktor:ktor-client-core:1.6.3")
     implementation("io.ktor:ktor-client-cio:1.6.3")
+    // HTML templating
+    implementation("io.ktor:ktor-freemarker:1.6.3")
     // Logging for Ktor
     implementation("ch.qos.logback:logback-classic:1.2.5")
 

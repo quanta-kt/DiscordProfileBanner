@@ -1,13 +1,18 @@
 package data.repository
 
+import data.models.LeaderboardRank
 import data.models.Stat
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import discord4j.common.util.Snowflake
+import discord4j.core.GatewayDiscordClient
+import discord4j.rest.http.client.ClientException
+import kotlinx.coroutines.*
+import kotlinx.coroutines.reactor.awaitSingleOrNull
+import kotlinx.coroutines.reactor.mono
 import java.sql.Timestamp
 import java.time.Instant
 import javax.sql.DataSource
 
-class VisitLogRepository(private val ds: DataSource) {
+class VisitLogRepository(private val ds: DataSource, private val bot: GatewayDiscordClient) {
 
     companion object {
         private const val QUERY_LOG_VISIT = """
@@ -37,21 +42,33 @@ class VisitLogRepository(private val ds: DataSource) {
         """
 
         private const val QUERY_DELETE_ALL = "DELETE FROM visit;"
+
+        private const val QUERY_GET_LEADERBOARD = """
+            SELECT
+                user_id,
+                COUNT(ip) AS total_visits,
+                COUNT(DISTINCT ip) AS unique_visits
+            FROM visit
+            GROUP BY user_id
+            ORDER BY unique_visits DESC
+            LIMIT 10;
+        """
     }
 
-    suspend fun logVisit(ip: String, countryCode: String?, instant: Instant, userId: Long) = withContext(Dispatchers.IO) {
-        ds.connection.use { connection ->
-            connection.prepareStatement(QUERY_LOG_VISIT).use { statement ->
-                statement.setString(1, ip)
-                statement.setStringOrNull(2, countryCode)
-                statement.setTimestamp(3, Timestamp.from(instant))
-                statement.setLong(4, userId)
-                statement.execute()
+    suspend fun logVisit(ip: String, countryCode: String?, instant: Instant, userId: Long) =
+        withContext(Dispatchers.IO) {
+            ds.connection.use { connection ->
+                connection.prepareStatement(QUERY_LOG_VISIT).use { statement ->
+                    statement.setString(1, ip)
+                    statement.setStringOrNull(2, countryCode)
+                    statement.setTimestamp(3, Timestamp.from(instant))
+                    statement.setLong(4, userId)
+                    statement.execute()
+                }
             }
         }
-    }
 
-    suspend fun getUserVisitStats(userId: Long) : Stat = withContext(Dispatchers.IO) {
+    suspend fun getUserVisitStats(userId: Long): Stat = withContext(Dispatchers.IO) {
         ds.connection.use { connection ->
 
             val totalVisits: Long
@@ -80,6 +97,30 @@ class VisitLogRepository(private val ds: DataSource) {
                 uniqueVisits = uniqueVisits,
                 topCountries = topCountries
             )
+        }
+    }
+
+    suspend fun getLeaderboardData(): List<LeaderboardRank> = withContext(Dispatchers.IO) {
+        ds.connection.use { connection ->
+            connection.prepareStatement(QUERY_GET_LEADERBOARD).use { statement ->
+                statement.executeQuery().use { resultSet ->
+                    resultSet.toList {
+                        val id = it.getLong("user_id")
+                        val username = try {
+                            val user = bot.getUserById(Snowflake.of(id)).awaitSingleOrNull()
+                            user?.tag ?: id.toString()
+                        } catch (e: ClientException) {
+                            id.toString()
+                        }
+                        LeaderboardRank(
+                            username,
+                            id,
+                            it.getLong("total_visits"),
+                            it.getLong("unique_visits"),
+                        )
+                    }
+                }
+            }
         }
     }
 
