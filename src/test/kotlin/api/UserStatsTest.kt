@@ -93,6 +93,7 @@ internal class UserStatsTest : KoinTest {
         }
 
         val mockLeaderboard = mapOf(
+            885845205201334333 to Pair(49, 20),
             595255377650647141 to Pair(50, 20),
             721012149933310029 to Pair(120, 30),
             402465792324665355 to Pair(150, 50),
@@ -100,6 +101,7 @@ internal class UserStatsTest : KoinTest {
         )
 
         val expectedRanks = mapOf(
+            885845205201334333 to 4,
             595255377650647141 to 3,
             721012149933310029 to 2,
             402465792324665355 to 1,

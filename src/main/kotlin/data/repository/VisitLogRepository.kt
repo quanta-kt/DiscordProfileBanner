@@ -50,7 +50,7 @@ class VisitLogRepository(private val ds: DataSource, private val bot: GatewayDis
                 COUNT(DISTINCT ip) AS unique_visits
             FROM visit
             GROUP BY user_id
-            ORDER BY unique_visits DESC
+            ORDER BY unique_visits DESC, total_visits DESC
             LIMIT 10;
         """
     }
