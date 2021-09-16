@@ -76,3 +76,5 @@ fabric.properties
 /build/**
 /.idea/discord.xml
 /.gradle/**
+
+/start.bat
