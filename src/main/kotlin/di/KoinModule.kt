@@ -15,7 +15,7 @@ val appModule = module {
 
     single { createHikariDataSource() }
     single { BannerPreferenceRepository(get()) }
-    single { VisitLogRepository(get()) }
+    single { VisitLogRepository(get(), get()) }
 
     single {
         HttpClient(CIO)

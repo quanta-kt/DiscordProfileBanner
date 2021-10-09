@@ -1,0 +1,46 @@
+.user-details {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    align-items: center;
+}
+
+@media only screen and (max-width: 768px) {
+    .user-details {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+}
+
+.user-avatar {
+    width: 10rem;
+    height: 10rem;
+    border-radius: 50%;
+}
+
+.username {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+#top-countries-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.top-countries {
+    max-width: 500px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.country-item {
+    display: flex;
+    gap: 1rem;
+    padding: 0.5rem;
+}
