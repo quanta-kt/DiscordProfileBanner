@@ -1,0 +1,333 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&display=swap');
+
+:root {
+    --color-text-1: #FFFFFF;
+    --color-text-2: #B9BBBE;
+
+    --color-background: rgb(54, 57, 63);
+    --color-primary: rgb(88, 101, 242);
+    --color-primary-dark: rgb(71, 82, 196);
+
+    --color-error: #EF5350;
+
+    --color-surface: rgb(47, 49, 54);
+    --color-surface-light: rgb(114, 118, 125);
+    --shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px
+    0 rgba(0, 0, 0, 0.19);
+}
+
+html {
+    background-color: var(--color-background);
+    scroll-behavior: smooth;
+    color: var(--color-text-1);
+    font-family: 'Poppins', sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    padding: 0;
+    margin: 0;
+}
+
+p {
+    color: var(--color-text-2);
+    font-size: 1rem; 
+}
+
+h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+}
+
+h2 {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+a {
+    text-decoration: none;
+    color: var(--color-primary);
+}
+
+input {
+    color: var(--color-text-1);
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+table, th, td {
+    text-align: center;
+}
+
+th {
+    padding: 1rem 0.5rem;
+    border-bottom: 1px solid var(--color-text-2);
+}
+
+tr {
+    border-left: 5px solid transparent;
+}
+
+td {
+    padding: 1rem 0.5rem;
+}
+
+tbody tr:hover {
+    border-left: 5px solid var(--color-text-2);
+}
+
+::-webkit-scrollbar-track {
+    background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+    background: #ffff;
+}
+
+.button {
+    display: inline-flex;
+    flex-direction: row;
+    align-content: center;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+
+    color: var(--color-text-1);
+    background-color: var(--color-primary);
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    padding: 0.5rem 1rem;
+    transition: background-color 0.2s ease-in-out 0s;
+}
+
+.button:hover {
+    text-decoration: none;
+}
+
+@media(hover: hover) and (pointer: fine) {
+    .button:hover {
+        background-color: var(--color-primary-dark);
+    }
+}
+
+.button:active {
+    background-color: var(--color-primary-dark);
+}
+
+.button:disabled {
+    background-color: var(--color-primary-dark);
+}
+
+.button .button-icon {
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: center center;
+    margin-right: 0.5rem;
+    width: 1rem;
+    height: 1rem;
+}
+
+.container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+.ic-discord {
+    background-image: url(../images/ic-discord.svg);
+}
+.ic-github {
+    background-image: url(../images/ic-github.svg);
+}
+
+.header {
+    background-color: var(--color-surface);
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    box-shadow: var(--shadow);
+}
+
+.nav-container {
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+}
+@media only screen and (max-width: 768px) {
+    .nav-container {
+        display: none;
+        flex-direction: column;
+    }
+}
+@media only screen and (min-width: 768px) {
+    .nav-container {
+        display: flex;
+        flex-direction: row;
+    }
+}
+
+.nav-bar {
+    padding: 0.5rem;
+}
+
+.nav-links {
+    display: flex;
+    justify-content: center;
+}
+
+@media only screen and (max-width: 768px) {
+    .nav-links {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+
+@media only screen and (min-width: 768px) {
+    .nav-links {
+        flex-direction: row;
+    }
+}
+
+.nav-links li {
+    display: inline-block;
+    list-style: none;
+    padding: 0.5rem;
+}
+
+.nav-links li:hover {
+    background-color: var(--color-background);
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: var(--color-text-1);
+}
+
+.nav-buttons {
+    padding: 0.5rem;
+    display: flex;
+    justify-content: center;
+}
+
+.burger-container {
+    width: 100%;
+    justify-content: right;
+}
+
+@media only screen and (max-width: 768px) {
+    .burger-container {
+        display: flex;
+    }
+}
+
+@media only screen and (min-width: 768px) {
+    .burger-container {
+        display: none;
+    }
+}
+
+.mobile-visible {
+    display: flex;
+}
+
+.burger {
+    margin: 0.5rem;
+    padding: 0.5rem;
+    border: none;
+    background-color: var(--color-surface);
+    cursor: pointer;;
+}
+
+@media(hover: hover) and (pointer: fine) {
+    .burger:hover {
+        background-color: var(--color-background);
+    }
+}
+
+.burger:active {
+    background-color: var(--color-background);
+}
+
+.burger > * {
+    width: 1.5rem;
+    background-color: var(--color-text-1);
+    height: 0.25rem;
+    margin-top: 0.25rem;
+}
+
+.center-flex {
+    display: flex;
+    justify-content: center;
+}
+
+.has-shadow {
+    box-shadow: var(--shadow);
+}
+
+/* Spacing helpers */
+.mt-half {
+    margin-top: 0.5rem;
+}
+.mt-1 {
+    margin-top: 1rem;
+}
+.mt-2 {
+    margin-top: 2rem;
+}
+.mt-3 {
+    margin-top: 3rem;
+}
+.mt-5 {
+    margin-top: 5rem;
+}
+
+.mb-1 {
+    margin-bottom: 1rem;
+}
+.mb-2 {
+    margin-bottom: 2rem;
+}
+
+.mr-half {
+    margin-right: 0.5rem;
+}
+.mr-1 {
+    margin-right: 1rem;
+}
+
+.ml-half {
+    margin-left: 0.5rem;
+}
+
+/* Text-helpers */
+.has-text-right {
+    text-align: right;
+}
+.has-text-center {
+    text-align: center;
+}
+.has-text-primary {
+    color: var(--color-text-1);
+}
+.has-text-secondary {
+    color: var(--color-text-2);
+}
+.has-text-error {
+    color: var(--color-error);
+}
+.has-text-bold {
+    font-weight: 700;
+}
+.has-text-large {
+    font-size: 1.5rem;
+}

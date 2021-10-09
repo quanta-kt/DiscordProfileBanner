@@ -86,7 +86,7 @@ class VisitLogRepository(private val ds: DataSource, private val bot: GatewayDis
                 statement.setLong(1, userId)
                 statement.executeQuery().use { resultSet ->
                     resultSet.iterator {
-                        it.getString("country") to it.getLong("visit_count")
+                        (it.getStringOrNull("country") ?: "unknown") to it.getLong("visit_count")
                     }.asSequence().toMap()
                 }
             }
